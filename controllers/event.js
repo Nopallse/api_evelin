@@ -1,6 +1,10 @@
 const Event = require("../models/EventModel");
 const EventParticipant = require("../models/EventParticipantModel");
 const jwt = require("jsonwebtoken");
+const { get } = require("../routes");
+const pusher = require("../config/pusher.js");
+const { Op } = require("sequelize");
+
 
 function checkUserLoggedIn(req) {
   const refreshToken = req.cookies.refreshToken;
@@ -120,6 +124,51 @@ const addEvent = async (req, res) => {
   }
 };
 
+// const editEvent = async (req, res) => {
+//   try {
+//     const userId = req.userId;
+//     const eventId = req.params.id;
+//     const { title, description, eventDate, location, category, speaker } = req.body;
+
+//     const event = await Event.findOne({
+//       where: {
+//         id: eventId,
+//         userId: userId
+//       }
+//     });
+
+//     if (!event) {
+//       return res.status(404).json({ error: true, message: "Event not found" });
+//     }
+
+//     const oldEventDate = event.eventDate;
+
+//     await event.update({
+//       title,
+//       description,
+//       eventDate,
+//       location,
+//       category,
+//       speaker
+//     });
+
+//     if (oldEventDate !== eventDate) {
+//       pusher.trigger('events', 'event-updated', {
+//         message: `Event date changed from ${oldEventDate} to ${eventDate}`
+//       });
+//     }
+
+//     res.status(200).json({
+//       error: false,
+//       message: "Event updated successfully",
+//       data: event
+//     });
+//   } catch (error) {
+//     console.error("Error updating event:", error.message);
+//     res.status(500).json({ error: true, message: "Internal server error" });
+//   }
+// };
+
 const regEvent = async (req, res) => {
   try {
     const { user } = checkUserLoggedIn(req);
@@ -147,9 +196,116 @@ const regEvent = async (req, res) => {
   }
 };
 
+const getMyEvents = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ error: true, message: "User not authenticated" });
+    }
+
+    const events = await Event.findAll({
+      where: {
+        userId: userId
+      }
+    });
+
+    res.status(200).json({
+      error: false,
+      message: "Events retrieved successfully",
+      data: events
+    });
+  } catch (error) {
+    console.error("Error fetching user's events:", error.message);
+    res.status(500).json({ error: true, message: "Internal server error" });
+  }
+};
+
+const getMyEventsDetails = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const eventId = req.params.id;
+
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ error: true, message: "User not authenticated" });
+    }
+
+    const event = await Event.findOne({
+      where: {
+        id: eventId,
+        userId: userId
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: true, message: "Event not found" });
+    }
+
+    res.status(200).json({
+      error: false,
+      message: "Event details retrieved successfully",
+      data: event
+    });
+  } catch (error) {
+    console.error("Error fetching event details:", error.message);
+    res.status(500).json({ error: true, message: "Internal server error" });
+  }
+};
+
+const searchEvent = async (req, res) => {
+  try {
+    const { title, description, eventDate, location, category, speaker } = req.query;
+
+    const searchCriteria = {};
+
+    if (title) {
+      searchCriteria.title = { [Op.like]: `%${title}%` };
+    }
+    if (description) {
+      searchCriteria.description = { [Op.like]: `%${description}%` };
+    }
+    if (eventDate) {
+      searchCriteria.eventDate = eventDate;
+    }
+    if (location) {
+      searchCriteria.location = { [Op.like]: `%${location}%` };
+    }
+    if (category) {
+      searchCriteria.category = { [Op.like]: `%${category}%` };
+    }
+    if (speaker) {
+      searchCriteria.speaker = { [Op.like]: `%${speaker}%` };
+    }
+
+    const events = await Event.findAll({
+      where: searchCriteria
+    });
+
+    res.status(200).json({
+      error: false,
+      message: "Search results retrieved successfully",
+      data: events
+    });
+  } catch (error) {
+    console.error("Error searching events:", error.message);
+    res.status(500).json({ error: true, message: "Internal server error" });
+  }
+};
+
+
+
+
 module.exports = {
   getEvents,
   getEvent,
   addEvent,
-  regEvent
+  regEvent,
+  getMyEvents,
+  getMyEventsDetails,
+  searchEvent
+  // editEvent
 };

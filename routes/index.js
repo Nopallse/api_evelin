@@ -1,7 +1,7 @@
 const express = require("express");
 const { Login, Logout,register } = require("../controllers/auth.js");
 const {getUser} = require("../controllers/Users.js");
-const {getEvents,getEvent,addEvent,regEvent} = require("../controllers/event.js");
+const {getEvents,getEvent,addEvent,regEvent, getMyEvents, getMyEventsDetails, editEvent, searchEvent} = require("../controllers/event.js");
 const { verifyToken } = require("../middleware/VerifyToken.js")
 const { isUserLoggedIn } = require("../middleware/isUserLoggedIn.js");
 const {upload} = require("../middleware/upload.js");
@@ -37,7 +37,16 @@ router.post('/addEvent', verifyToken, upload.single("posterUrl"), addEvent);
 
 router.post('/regEvent/:id', verifyToken, regEvent);
 
+router.get('/myEvents', verifyToken, (req, res) => {
+  getMyEvents(req, res);
+});
+router.get('/myEvent/:id', verifyToken, (req, res) => {
+  getMyEventsDetails(req, res);
+});
+// router.put('/editEvent/:id', verifyToken, editEvent);
 
-
+router.get('/searchEvent', (req, res) => {
+  searchEvent(req, res);
+});
 
 module.exports = router;

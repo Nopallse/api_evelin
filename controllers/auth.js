@@ -56,7 +56,11 @@ const Login = async (req, res) => {
       data: {
         user: {
           id: userId,
+          name: user.name,
           email: user.email,
+          noHp: user.noHp,
+          institusi: user.institusi,
+          refresh_token: user.refresh_token
         },
         token: token,
         refreshToken: refreshToken,
