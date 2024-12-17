@@ -1,4 +1,5 @@
 const Event = require("../models/EventModel");
+const EventParticipant = require("../models/EventParticipantModel");
 const jwt = require("jsonwebtoken");
 
 function checkUserLoggedIn(req) {
@@ -119,8 +120,36 @@ const addEvent = async (req, res) => {
   }
 };
 
+const regEvent = async (req, res) => {
+  try {
+    const { user } = checkUserLoggedIn(req);
+
+    if (!user) {
+      return res
+        .status(401)
+        .json({ error: true, message: "User not authenticated" });
+    }
+
+    const eventParticipant = await EventParticipant.create({
+      userId: user.userId,
+      eventId: req.params.id,
+    });
+
+
+    res.status(201).json({
+      error: false,
+      message: "Event berhasil ditambahkan",
+      data: eventParticipant,
+    });
+  } catch (error) {
+    console.error("Error creating event:", error.message);
+    res.status(500).json({ error: true, message: "Internal server error" });
+  }
+};
+
 module.exports = {
   getEvents,
   getEvent,
   addEvent,
+  regEvent
 };
