@@ -1,21 +1,21 @@
 const Event = require("../models/EventModel");
 const EventParticipant = require("../models/EventParticipantModel");
 const jwt = require("jsonwebtoken");
-const { get } = require("../routes");
+const { get, use } = require("../routes");
 const pusher = require("../config/pusher.js");
 const { Op } = require("sequelize");
 
 
 function checkUserLoggedIn(req) {
-  const refreshToken = req.cookies.refreshToken;
+  const authHeader = req.headers['authorization'];
+  const accessToken = authHeader && authHeader.split(' ')[1];
 
   let user = null;
-
-  if (refreshToken) {
+  if (accessToken) {
     try {
       const decoded = jwt.verify(
-        refreshToken,
-        process.env.REFRESH_TOKEN_SECRET
+        accessToken,
+        process.env.ACCESS_TOKEN_SECRET
       );
       user = {
         userId: decoded.userId,
@@ -48,7 +48,17 @@ const getEvents = async (req, res) => {
 const getEvent = async (req, res) => {
   try {
     const event = await Event.findByPk(req.params.id);
+    const { user } = checkUserLoggedIn(req);
 
+    const eventParticipants = await 
+    EventParticipant.findAll({
+      where: {
+        eventId: req.params.id,userId: user.userId
+      },
+    });
+
+    const isRegistered = eventParticipants.length ;
+    console.log("isRegistered:", isRegistered);
     if (!event) {
       return res
         .status(404)
@@ -58,13 +68,16 @@ const getEvent = async (req, res) => {
     res.status(200).json({
       error: false,
       message: "Data event berhasil didapatkan",
-      data: event,
+      data: { event, isRegistered }
     });
   } catch (error) {
     console.error("Error fetching event:", error.message);
     res.status(500).json({ error: true, message: "Internal server error" });
   }
 };
+
+
+
 const addEvent = async (req, res) => {
   try {
     const { user } = checkUserLoggedIn(req);
@@ -86,8 +99,7 @@ const addEvent = async (req, res) => {
       !description ||
       !eventDate ||
       !location ||
-      !category ||
-      !speaker
+      !category
     ) {
       return res.status(400).json({
         error: true,
@@ -223,6 +235,38 @@ const getMyEvents = async (req, res) => {
   }
 };
 
+const getHistory = async (req, res) => {
+  try {
+    const { user } = checkUserLoggedIn(req);
+
+    if (!user) {
+      return res
+        .status(401)
+        .json({ error: true, message: "User not authenticated" });
+    }
+
+    const eventParticipants = await EventParticipant.findAll({
+      where: { userId: user.userId },
+      include: [
+        {
+          model: Event,
+        },
+      ],
+    });
+
+
+
+    res.status(200).json({
+      error: false,
+      message: "Events retrieved successfully",
+      data: eventParticipants
+    });
+  } catch (error) {
+    console.error("Error fetching user's events:", error.message);
+    res.status(500).json({ error: true, message: "Internal server error" });
+  }
+};
+
 const getMyEventsDetails = async (req, res) => {
   try {
     const userId = req.userId;
@@ -306,6 +350,7 @@ module.exports = {
   regEvent,
   getMyEvents,
   getMyEventsDetails,
-  searchEvent
+  searchEvent,
+  getHistory
   // editEvent
 };

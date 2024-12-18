@@ -5,14 +5,16 @@ const jwt = require('jsonwebtoken');
 
 
 function checkUserLoggedIn(req) {
-  const refreshToken = req.cookies.refreshToken;
-  console.log('refreshToken:', refreshToken);
-  
+  const authHeader = req.headers['authorization'];
+  const accessToken = authHeader && authHeader.split(' ')[1];
+
   let user = null;
 
-  if (refreshToken) {
+
+
+  if (accessToken) {
       try {
-          const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+          const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
           user = {
               userId: decoded.userId,
           };
